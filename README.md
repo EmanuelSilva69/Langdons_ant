@@ -67,3 +67,6 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Esse README fornece uma visão geral do projeto, instruções de instalação, funcionalidades e como usar o código. Você pode ajustar conforme necessário para melhor se adequar às suas necessidades específicas.
+![image](https://github.com/user-attachments/assets/3cc89a99-99d7-4eb3-9b3b-66ee5f24500c)
+![image](https://github.com/user-attachments/assets/82e665e6-3f0b-4d58-8f3d-3da4ed3e2873)
+
