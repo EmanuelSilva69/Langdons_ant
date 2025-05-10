@@ -71,5 +71,6 @@ Esse README fornece uma visão geral do projeto, instruções de instalação, f
 ---
 
 ![image](https://github.com/user-attachments/assets/3cc89a99-99d7-4eb3-9b3b-66ee5f24500c)
-![image](https://github.com/user-attachments/assets/82e665e6-3f0b-4d58-8f3d-3da4ed3e2873)
+![image](https://github.com/user-attachments/assets/327bbc1b-2e01-4e6a-ad12-3f131eb3bc8d)
+
 
