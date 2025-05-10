@@ -1,0 +1,282 @@
+import pygame
+import random
+import math
+
+# Inicialização do Pygame
+pygame.init()
+
+# Configurações da tela
+WIDTH, HEIGHT = 900, 900
+GRID_SIZE = 4
+MIN_GRID_SIZE = 2
+MAX_GRID_SIZE = 50
+
+def recalc_grid():
+    global ROWS, COLS, grid
+    ROWS, COLS = HEIGHT // GRID_SIZE, WIDTH // GRID_SIZE
+    # Redimensiona o grid mantendo o conteúdo central
+    new_grid = [[0 for _ in range(COLS)] for _ in range(ROWS)]
+    min_rows = min(ROWS, len(grid))
+    min_cols = min(COLS, len(grid[0]))
+    for y in range(min_rows):
+        for x in range(min_cols):
+            new_grid[y][x] = grid[y][x]
+    grid = new_grid
+
+ROWS, COLS = HEIGHT // GRID_SIZE, WIDTH // GRID_SIZE
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Formiga de Langton - Quadrada e Hexagonal")
+
+# Cores
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+# Perguntar ao usuário o modo clássico
+modo_classico = input("Modo clássico? (S/N): ").strip().upper()
+while modo_classico not in ("S", "N"):
+    modo_classico = input("Digite S para Sim ou N para Não: ").strip().upper()
+
+# Perguntar ao usuário o tipo de grid
+tipo_grid = input("Escolha o tipo de grid (Q para quadrada, H para hexagonal): ").strip().upper()
+while tipo_grid not in ("Q", "H"):
+    tipo_grid = input("Digite Q para quadrada ou H para hexagonal: ").strip().upper()
+
+# Perguntar ao usuário a sequência de regras
+print("Digite a sequência de regras (exemplo para quadrada: RLRL, exemplo para hexagonal: L1L2NUL2L1R2):")
+sequencia = input("Sequência: ").upper().replace(" ", "")
+
+# Função para gerar cor aleatória
+def gerar_cor_aleatoria():
+    return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
+# Interpretar regras e gerar cores
+def interpretar_regras_hex(seq):
+    regras = []
+    i = 0
+    while i < len(seq):
+        if seq[i] in "LRNU":
+            if i+1 < len(seq) and seq[i+1].isdigit():
+                for _ in range(int(seq[i+1])):
+                    regras.append(seq[i])
+                i += 2
+            else:
+                regras.append(seq[i])
+                i += 1
+        else:
+            i += 1
+    return regras
+
+def interpretar_regras_quad(seq):
+    return [c for c in seq if c in "RL"]
+
+if tipo_grid == "H":
+    regras = interpretar_regras_hex(sequencia)
+else:
+    regras = interpretar_regras_quad(sequencia)
+
+# Funções para manipulação de cores
+def hex_para_rgb(hexstr):
+    hexstr = hexstr.lstrip('#')
+    return tuple(int(hexstr[i:i+2], 16) for i in (0, 2, 4))
+
+def gerar_variacoes_cor(base_rgb, n):
+    # Gera n variações (mais claras e mais escuras) da cor base
+    variacoes = []
+    for i in range(n):
+        fator = 0.5 + (i / (n - 1)) * 0.8  # de 0.5 a 1.3
+        r = min(255, max(0, int(base_rgb[0] * fator)))
+        g = min(255, max(0, int(base_rgb[1] * fator)))
+        b = min(255, max(0, int(base_rgb[2] * fator)))
+        variacoes.append((r, g, b))
+    return variacoes
+
+def cor_complementar(rgb):
+    return (255 - rgb[0], 255 - rgb[1], 255 - rgb[2])
+
+# Opções de cores básicas
+cores_nome = {
+    "vermelho": (255, 0, 0),
+    "verde": (0, 255, 0),
+    "azul": (0, 0, 255),
+    "amarelo": (255, 255, 0),
+    "ciano": (0, 255, 255),
+    "magenta": (255, 0, 255),
+    "preto": (0, 0, 0),
+    "branco": (255, 255, 255),
+    "laranja": (255, 165, 0),
+    "roxo": (128, 0, 128)
+}
+
+# Definir cores para modo clássico ou personalizadas
+if modo_classico == "S" :
+    cores = [WHITE, BLACK]  # fundo branco, célula preta
+    cor_fundo = WHITE
+    cor_formiga = BLACK
+else:
+    # Perguntar ao usuário se quer cor aleatória ou personalizada
+    print("\nVocê pode escolher uma cor base para as células (ex: vermelho, #FF0000, aleatória).")
+    cor_base_input = input("Digite a cor base desejada ou 'aleatória': ").strip().lower()
+
+    if cor_base_input == "aleatória":
+        cores = [gerar_cor_aleatoria() for _ in regras]
+    elif cor_base_input in cores_nome:
+        base = cores_nome[cor_base_input]
+        cores = gerar_variacoes_cor(base, len(regras))
+        # Se houver mais de 3 estados, insere também a cor complementar
+        if len(regras) > 3:
+            cores[2] = cor_complementar(base)
+    elif cor_base_input.startswith("#") and len(cor_base_input) == 7:
+        try:
+            base = hex_para_rgb(cor_base_input)
+            cores = gerar_variacoes_cor(base, len(regras))
+            if len(regras) > 3:
+                cores[2] = cor_complementar(base)
+        except Exception:
+            print("HEX inválido, usando aleatória.")
+            cores = [gerar_cor_aleatoria() for _ in regras]
+    else:
+        print("Cor não reconhecida, usando aleatória.")
+        cores = [gerar_cor_aleatoria() for _ in regras]
+    cor_fundo = BLACK
+    cor_formiga = None  # não usado
+
+# Grid para rastrear o trajeto
+grid = [[0 for _ in range(COLS)] for _ in range(ROWS)]
+
+# --- Formiga Quadrada ---
+class LangtonAntQuad:
+    def __init__(self, colors, rules, start_pos):
+        self.colors = colors
+        self.rules = rules
+        self.num_states = len(colors)
+        self.x, self.y = start_pos
+        self.direction = 0  # 0: cima, 1: direita, 2: baixo, 3: esquerda
+
+    def move(self):
+        current_state = grid[self.y][self.x]
+        if self.rules[current_state] == "R":
+            self.direction = (self.direction + 1) % 4
+        elif self.rules[current_state] == "L":
+            self.direction = (self.direction - 1) % 4
+
+        grid[self.y][self.x] = (current_state + 1) % self.num_states
+
+        dx, dy = 0, 0
+        if self.direction == 0: dy = -1
+        elif self.direction == 1: dx = 1
+        elif self.direction == 2: dy = 1
+        elif self.direction == 3: dx = -1
+
+        new_x = self.x + dx
+        new_y = self.y + dy
+        # Limita a formiga dentro da janela
+        if 0 <= new_x < COLS and 0 <= new_y < ROWS:
+            self.x, self.y = new_x, new_y
+
+    def draw(self):
+        if modo_classico == "S" and len(self.colors) == 2:
+            # Desenha a célula normalmente
+            pygame.draw.rect(screen, self.colors[grid[self.y][self.x]],
+                             (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+            # Desenha a formiga como um quadrado preto
+            pygame.draw.rect(screen, cor_formiga,
+                             (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+        else:
+            pygame.draw.rect(screen, self.colors[grid[self.y][self.x]],
+                             (self.x * GRID_SIZE, self.y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+
+# --- Formiga Hexagonal ---
+HEX_DIRECTIONS = [
+    (1, 0), (1, -1), (0, -1),
+    (-1, 0), (-1, 1), (0, 1)
+]
+
+class LangtonAntHex:
+    def __init__(self, colors, rules, start_pos):
+        self.colors = colors
+        self.rules = rules
+        self.num_states = len(colors)
+        self.x, self.y = start_pos
+        self.direction = 0  # 0 a 5
+
+    def move(self):
+        current_state = grid[self.y][self.x]
+        action = self.rules[current_state]
+        if action == "L":
+            self.direction = (self.direction - 1) % 6
+        elif action == "R":
+            self.direction = (self.direction + 1) % 6
+        elif action == "U":
+            self.direction = (self.direction + 3) % 6
+        # "N" = não vira
+
+        grid[self.y][self.x] = (current_state + 1) % self.num_states
+
+        dx, dy = HEX_DIRECTIONS[self.direction]
+        new_x = self.x + dx
+        new_y = self.y + dy
+        # Limita a formiga dentro da janela
+        if 0 <= new_x < COLS and 0 <= new_y < ROWS:
+            self.x, self.y = new_x, new_y
+
+    def draw(self):
+        cor = self.colors[grid[self.y][self.x]]
+        draw_hex(screen, self.x, self.y, GRID_SIZE, cor)
+        if modo_classico == "S" and len(self.colors) == 2:
+            # Desenha a formiga como um hexágono preto
+            draw_hex(screen, self.x, self.y, GRID_SIZE, cor_formiga)
+
+# Função para desenhar hexágono
+def draw_hex(surface, x, y, size, color):
+    # Coordenadas axiais para pixel
+    px = size * 3/2 * x + 10
+    py = size * math.sqrt(3) * (y + 0.5 * (x % 2)) + 10
+    points = []
+    for i in range(6):
+        angle = math.pi / 3 * i
+        px_i = px + size * math.cos(angle)
+        py_i = py + size * math.sin(angle)
+        points.append((px_i, py_i))
+    pygame.draw.polygon(surface, color, points)
+
+# Inicializar a formiga
+if tipo_grid == "H":
+    ant = LangtonAntHex(cores, regras, (COLS // 2, ROWS // 2))
+else:
+    ant = LangtonAntQuad(cores, regras, (COLS // 2, ROWS // 2))
+
+# Loop principal
+running = True
+clock = pygame.time.Clock()
+while running:
+    screen.fill(cor_fundo)
+    ant.move()
+    ant.draw()
+
+    # Desenhar o grid
+    for y in range(ROWS):
+        for x in range(COLS):
+            if grid[y][x] > 0:
+                if tipo_grid == "H":
+                    draw_hex(screen, x, y, GRID_SIZE, cores[grid[y][x]])
+                else:
+                    pygame.draw.rect(screen, cores[grid[y][x]],
+                                     (x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+
+    pygame.display.flip()
+    clock.tick(120)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_PLUS or event.key == pygame.K_EQUALS:  # Zoom in (+)
+                if GRID_SIZE < MAX_GRID_SIZE:
+                    GRID_SIZE += 1
+                    recalc_grid()
+            elif event.key == pygame.K_MINUS:  # Zoom out (-)
+                if GRID_SIZE > MIN_GRID_SIZE:
+                    GRID_SIZE -= 1
+                    recalc_grid()
+
+pygame.quit()
